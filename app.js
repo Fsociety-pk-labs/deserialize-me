@@ -4,6 +4,9 @@ const path = require('path');
 const yaml = require('js-yaml');
 const crypto = require('crypto');
 
+// Custom schema to allow JavaScript execution (UNSAFE)
+const dangerousSchema = yaml.DEFAULT_SCHEMA;
+
 const app = express();
 
 app.use(express.static('public'));
@@ -103,7 +106,7 @@ app.get('/admin/dashboard', (req, res) => {
     user: session.username,
     status: 'Authorized',
     message: 'You have successfully authenticated',
-    hint: 'Check the configuration endpoints for system data'
+    hint: 'The FLAG is stored in process.env.FLAG. Use the /api/system-config endpoint with YAML RCE to extract it.'
   });
 });
 
@@ -128,10 +131,9 @@ app.post('/api/system-config', (req, res) => {
   }
   
   try {
-    // UNSAFE: js-yaml.unsafe allows arbitrary JavaScript execution
-    // This deserializes !!js/object and !!js/function tags
-    // The FLAG environment variable can be extracted through RCE
-    const config = yaml.unsafe.load(data);
+    // UNSAFE: Using DEFAULT_SCHEMA which allows !!js/object and !!js/function
+    // This enables arbitrary JavaScript execution through YAML deserialization
+    const config = yaml.load(data);
     
     // If the exploit returns a string, return it
     if (typeof config === 'string') {
@@ -142,11 +144,27 @@ app.post('/api/system-config', (req, res) => {
       });
     }
     
+    // If it's a function, call it and return the result
+    if (typeof config === 'function') {
+      try {
+        const result = config();
+        return res.json({
+          status: 'success',
+          result: result,
+          message: 'Function executed'
+        });
+      } catch (e) {
+        return res.json({
+          status: 'error',
+          message: 'Function execution error: ' + e.message
+        });
+      }
+    }
+    
     res.json({
       status: 'success',
       config: config,
-      message: 'Configuration loaded',
-      system_info: 'Using js-yaml v4.x'
+      message: 'Configuration loaded'
     });
   } catch (err) {
     res.json({
