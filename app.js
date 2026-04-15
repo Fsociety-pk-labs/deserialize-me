@@ -106,12 +106,65 @@ app.get('/admin/dashboard', (req, res) => {
     user: session.username,
     status: 'Authorized',
     message: 'You have successfully authenticated',
-    hint: 'The FLAG is stored in process.env.FLAG. Use the /api/system-config endpoint with YAML RCE to extract it.'
+    hint: 'Try the /api/eval-expression endpoint to evaluate mathematical expressions. Test with: 2+2'
   });
 });
 
-// System config endpoint - VULNERABLE to YAML deserialization RCE
-// This is where the FLAG is hidden via code execution
+// Code evaluation endpoint - VULNERABLE to injection
+// The FLAG can be extracted by injecting code that accesses process.env
+app.post('/api/eval-expression', (req, res) => {
+  const sessionId = req.headers['x-session-id'];
+  
+  // Must be authenticated
+  if (!sessionId || !sessions.has(sessionId)) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Unauthorized'
+    });
+  }
+  
+  const { expression } = req.body;
+  
+  if (!expression) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'No expression provided'
+    });
+  }
+  
+  // Input length check (can be bypassed)
+  if (expression.length > 1000) {
+    return res.status(413).json({
+      status: 'error',
+      message: 'Expression too long'
+    });
+  }
+  
+  try {
+    // VULNERABLE: Using Function constructor with user input
+    // This allows arbitrary code execution
+    // Attacker can inject: }); return process.env.FLAG; //
+    const evaluator = new Function('env', `
+      const process = { env: env };
+      return (${expression});
+    `);
+    
+    const result = evaluator(process.env);
+    
+    res.json({
+      status: 'success',
+      result: result,
+      message: 'Expression evaluated'
+    });
+  } catch (err) {
+    res.json({
+      status: 'error',
+      message: 'Evaluation error: ' + err.message
+    });
+  }
+});
+
+// System config endpoint - simple config processing (not actually vulnerable)
 app.post('/api/system-config', (req, res) => {
   const { data } = req.body;
   
@@ -122,44 +175,8 @@ app.post('/api/system-config', (req, res) => {
     });
   }
   
-  // Basic input validation - can be bypassed
-  if (data.length > 10000) {
-    return res.status(413).json({
-      status: 'error',
-      message: 'Payload too large'
-    });
-  }
-  
   try {
-    // UNSAFE: Using DEFAULT_SCHEMA which allows !!js/object and !!js/function
-    // This enables arbitrary JavaScript execution through YAML deserialization
     const config = yaml.load(data);
-    
-    // If the exploit returns a string, return it
-    if (typeof config === 'string') {
-      return res.json({
-        status: 'success',
-        result: config,
-        message: 'Configuration processed'
-      });
-    }
-    
-    // If it's a function, call it and return the result
-    if (typeof config === 'function') {
-      try {
-        const result = config();
-        return res.json({
-          status: 'success',
-          result: result,
-          message: 'Function executed'
-        });
-      } catch (e) {
-        return res.json({
-          status: 'error',
-          message: 'Function execution error: ' + e.message
-        });
-      }
-    }
     
     res.json({
       status: 'success',
