@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const yaml = require('js-yaml');
@@ -45,17 +46,17 @@ app.get('/api/system-config', (req, res) => {
   }
 });
 
-// Admin panel - contains flag
+// Admin panel - contains flag (from .env)
 app.get('/admin/dashboard', (req, res) => {
   res.json({
     user: 'admin',
     status: 'System Compromised',
-    flag: 'fsociety{y4ml_d3s3r1al_rce_pwn3d_2024}',
+    flag: process.env.FLAG || 'FLAG_NOT_SET',
     system_info: 'Node.js v18.x with vulnerable js-yaml',
     data_exfil: true
   });
 });
 
-app.listen(3000, () => {
-  console.log('fsociety System Online on http://localhost:3000');
+app.listen(process.env.PORT || 3000, () => {
+  console.log(`fsociety System Online on http://localhost:${process.env.PORT || 3000}`);
 });

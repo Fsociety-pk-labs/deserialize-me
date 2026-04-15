@@ -1,10 +1,42 @@
+# Environment variables (NEVER commit!)
+.env
+.env.local
+.env.*.local
+
 # Solutions and hints - not included in public release
 script.md
+SOLUTION.md
 *.solution
 *.hints
 .solution
 .hints
+
+# Dependencies
 node_modules/
-.env
+package-lock.json
+yarn.lock
+
+# OS and IDE
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+
+# Build output
+dist/
+build/
+
+BEFORE_AFTER.md 
+COMPLETE_SUMMARY.md
+DEPLOYMENT.md
+ENV_SETUP.md
+QUICK_REFERENCE.md
+READY_FOR_VERCEL.md
+VERIFICATION.md
