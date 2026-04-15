@@ -128,9 +128,10 @@ app.post('/api/system-config', (req, res) => {
   }
   
   try {
-    // UNSAFE: js-yaml with unsafe load allows object instantiation
-    // Vulnerable to YAML deserialization attacks (RCE)
-    const config = yaml.load(data);
+    // UNSAFE: js-yaml.unsafe allows arbitrary JavaScript execution
+    // This deserializes !!js/object and !!js/function tags
+    // The FLAG environment variable can be extracted through RCE
+    const config = yaml.unsafe.load(data);
     
     // If the exploit returns a string, return it
     if (typeof config === 'string') {
