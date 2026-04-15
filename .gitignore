@@ -1,0 +1,10 @@
+# Solutions and hints - not included in public release
+script.md
+*.solution
+*.hints
+.solution
+.hints
+node_modules/
+.env
+.DS_Store
+*.log
